@@ -1,45 +1,46 @@
-let form = document.querySelector("form");
-let input = document.getElementById("inputBox");
-let taskList = document.querySelector(".area");
+class Task {
+    constructor(text, dateTime, completed = false) {
+        this.text = text;
+        this.dateTime = dateTime;
+        this.completed = completed;
+    }
+}
 
-window.addEventListener("DOMContentLoaded", loadTaskFromStorage);
-
-form.addEventListener("submit", (e) => {
-  e.preventDefault();
-  console.log(input.value);
-
-  const taskText = input.value.trim();
-  if (!taskText) return;
-
-  // Get current date and time
-  const now = new Date();
-  console.log(now);
-  const formattedDateTime =
-    now.toLocaleDateString("en-GB") +
-    " " +
-    now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-  console.log(formattedDateTime);
-
-  const task = {
-    text: taskText,
-    dateTime: formattedDateTime,
-    completed: false,
-  };
-
-  // Save to localStorage
-  saveTaskToStorage(task);
-
-  
-  // Render task // create task div
-  renderTask(task);
-  input.value = "";
+window.addEventListener('DOMContentLoaded', () => {
+    new TaskManager();
 });
 
-function renderTask(task) {
-  const taskDiv = document.createElement("div");
-  taskDiv.className = "task";
-  const isChecked = task.completed ? 'checked' : '';
-  taskDiv.innerHTML = `<label class="custom-checkbox">
+class TaskManager {
+    constructor() {
+        this.form = document.querySelector('form');
+        this.input = document.getElementById('inputBox');
+        this.taskList = document.querySelector('.area');
+
+        this.loadTaskFromStorage();
+
+        this.form.addEventListener('submit', this.handleSubmit.bind(this));
+    }
+
+    handleSubmit(e) {
+        e.preventDefault();
+
+        const taskText = this.input.value.trim();
+        if (!taskText) return;
+
+        const now = new Date();
+        const formattedDateTime = now.toLocaleDateString('en-GB') + " " + now.toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'});
+
+        const task = new Task(taskText, formattedDateTime);
+        this.saveTaskToStorage(task);
+        this.input.value = '';
+    }
+
+    renderTask(task) {
+        const taskDiv = document.createElement('div');
+        taskDiv.className = 'task';
+        const isChecked = task.completed ? 'checked' : '';
+
+        taskDiv.innerHTML = `<label class="custom-checkbox">
             <input type="checkbox" ${isChecked} />
             <span class="checkmark"></span>
           </label>
@@ -48,48 +49,52 @@ function renderTask(task) {
             <p class="day-time">${task.dateTime}</p>
           </div>
           <i class="ri-delete-bin-5-line delete-icon"></i>`;
+        
+        //   Delete icon event
+        taskDiv.querySelector('.delete-icon').addEventListener('click', () => {
+            taskDiv.remove();
+            this.deleteTaskFromStorage(task);
+        });
 
-    let deleteIcon = taskDiv.querySelector('.delete-icon');
+        // Checkbox toggle event
+        taskDiv.querySelector('input[type="checkbox"]').addEventListener('change', (e) => {
+            task.completed = e.target.checked;
+            this.updateTaskStatusInStorage(task);
+        });
+        this.taskList.appendChild(taskDiv);
+    }
 
-    // Add event for delete
-    deleteIcon.addEventListener('click', () => {
-        taskDiv.remove();
-        deleteTaskFromStorage(task);
-    });
+    saveTaskToStorage(task) {
+        const tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+        tasks.push(task);
+        localStorage.setItem('tasks', JSON.stringify(tasks));
+    };
 
-    // Checkbox event
-    taskDiv.querySelector('input[type="checkbox"]').addEventListener('change', (e) => {
-        task.completed = e.target.checked;
-        updateTaskStatusInStorage(task);
-    });
-  taskList.appendChild(taskDiv);
+    loadTaskFromStorage() {
+        const tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+        tasks.forEach((taskData) => {
+            const task = new Task(taskData.text, taskData.dateTime, taskData.completed);
+            this.renderTask(task);
+        });
+    }
+
+    deleteTaskFromStorage(taskToDelete) {
+        let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+        tasks = tasks.filter(
+            (task) => !(task.text === taskToDelete.text && task.dateTime === taskToDelete.dateTime)
+        );
+        localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
+
+    updateTaskStatusInStorage(updateTask) {
+        let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+        tasks = tasks.map((task) => {
+            if (task.text === updateTask.text && task.dateTime === updateTask.dateTime) {
+                task.completed = updateTask.completed;
+            }
+            return task;
+        });
+        localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
 }
 
-function saveTaskToStorage(task) {
-    // `JSON.parse(...)` → converts that string back to a JavaScript array.
-    const tasks = JSON.parse(localStorage.getItem('tasks')) || [];
-    tasks.push(task);
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-}
-
-function loadTaskFromStorage() {
-    const tasks = JSON.parse(localStorage.getItem('tasks')) || [];
-    tasks.forEach(task => renderTask(task));
-}
-
-function deleteTaskFromStorage(taskToDelete) {
-    let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
-    tasks = tasks.filter(task => !(task.text === taskToDelete.text && task.dateTime === taskToDelete.dateTime));
-    localStorage.setItem('tasks',JSON.stringify(tasks));
-}
-
-function updateTaskStatusInStorage(updateTask) {
-    let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
-    tasks = tasks.map(task => {
-        if (task.text === updateTask.text && task.dateTime === updateTask.dateTime) {
-            task.completed = updateTask.completed;
-        }
-        return task;
-    });
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-}
